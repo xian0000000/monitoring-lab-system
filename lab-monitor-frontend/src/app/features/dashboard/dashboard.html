@@ -1,0 +1,108 @@
+<section class="toolbar">
+  <div class="status-pill" [class.on]="connected()">
+    <span class="dot"></span>
+    {{ connected() ? 'Live' : 'Terputus' }}
+  </div>
+
+  <button class="btn primary" (click)="triggerScan()" [disabled]="scanning()">
+    {{ scanning() ? 'Scanning...' : 'Scan Sekarang' }}
+  </button>
+
+  <button class="btn" (click)="showDeviceForm = !showDeviceForm">+ Device</button>
+  <button class="btn" (click)="showLabForm = !showLabForm">+ Lab</button>
+</section>
+
+@if (error()) {
+  <div class="alert">{{ error() }}</div>
+}
+
+<section class="stats">
+  <div class="stat-card">
+    <span class="stat-value">{{ totalCount() }}</span>
+    <span class="stat-label">Total Device</span>
+  </div>
+  <div class="stat-card online">
+    <span class="stat-value">{{ onlineCount() }}</span>
+    <span class="stat-label">Online</span>
+  </div>
+  <div class="stat-card offline">
+    <span class="stat-value">{{ offlineCount() }}</span>
+    <span class="stat-label">Offline</span>
+  </div>
+</section>
+
+@if (showDeviceForm) {
+  <form class="panel" (ngSubmit)="submitDevice()">
+    <h3>Tambah Device</h3>
+    <div class="fields">
+      <input name="name" placeholder="Nama device" [(ngModel)]="newDevice.name" required />
+      <input name="ip" placeholder="IP Address" [(ngModel)]="newDevice.ip_address" required />
+      <select name="lab" [(ngModel)]="newDevice.lab_id">
+        <option [value]="0">Tanpa lab</option>
+        @for (lab of labs(); track lab.id) {
+          <option [value]="lab.id">{{ lab.name }}</option>
+        }
+      </select>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn primary">Simpan</button>
+      <button type="button" class="btn" (click)="showDeviceForm = false">Batal</button>
+    </div>
+  </form>
+}
+
+@if (showLabForm) {
+  <form class="panel" (ngSubmit)="submitLab()">
+    <h3>Tambah Lab</h3>
+    <div class="fields">
+      <input name="labName" placeholder="Nama lab" [(ngModel)]="newLab.name" required />
+      <input name="location" placeholder="Lokasi" [(ngModel)]="newLab.location" />
+      <input name="capacity" type="number" placeholder="Kapasitas" [(ngModel)]="newLab.capacity" />
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn primary">Simpan</button>
+      <button type="button" class="btn" (click)="showLabForm = false">Batal</button>
+    </div>
+  </form>
+}
+
+<section class="table-wrap">
+  @if (loading()) {
+    <p class="empty">Memuat data...</p>
+  } @else if (sortedDevices().length === 0) {
+    <p class="empty">Belum ada device. Tambahkan atau tunggu hasil scan.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Nama</th>
+          <th>IP Address</th>
+          <th>Lab</th>
+          <th>Terakhir Terlihat</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (device of sortedDevices(); track device.id) {
+          <tr>
+            <td>
+              <span class="badge" [class.online]="device.status === 'online'" [class.offline]="device.status !== 'online'">
+                {{ device.status === 'online' ? 'Online' : 'Offline' }}
+              </span>
+            </td>
+            <td>{{ device.name }}</td>
+            <td class="mono">{{ device.ip_address }}</td>
+            <td>{{ labName(device.lab_id) }}</td>
+            <td>{{ device.last_seen ? (device.last_seen | date: 'dd/MM/yy HH:mm:ss') : '-' }}</td>
+            <td>
+              @if (device.id > 0) {
+                <button class="btn danger sm" (click)="removeDevice(device)">Hapus</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</section>

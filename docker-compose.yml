@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: atminlab
+      POSTGRES_PASSWORD: atmin123
+      POSTGRES_DB: monitorlab
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atminlab -d monitorlab"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./lab-monitor-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: atminlab
+      DB_PASSWORD: atmin123
+      DB_NAME: monitorlab
+      PORT: "8080"
+      # Harus sama persis dengan subnet interface aktif host Docker ini
+      # (cek: ip addr). Sebelumnya 172.16.100.0/24 tapi host ini di WiFi
+      # 192.168.18.0/24 (wlp2s0), makanya scan ga nemu apa-apa.
+      NETWORK_CIDR: 192.168.18.0/24
+    ports:
+      - "8080:8080"
+    # go-ping jalan di mode unprivileged (SOCK_DGRAM ICMP), kernel butuh izin ini
+    # supaya ping dari dalam container ga langsung "operation not permitted".
+    sysctls:
+      - net.ipv4.ping_group_range=0 2147483647
+    cap_add:
+      - NET_RAW
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./lab-monitor-frontend
+    depends_on:
+      - backend
+    ports:
+      - "4200:80"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
